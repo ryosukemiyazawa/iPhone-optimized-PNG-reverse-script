@@ -1,5 +1,7 @@
 <?php
 
+include_once 'ZlibDecompress/ZlibDecompress.php';
+
 class Peperzaken_Ios_DecodeImage {
 
 	private $_imagePath;
@@ -66,8 +68,7 @@ class Peperzaken_Ios_DecodeImage {
             
         		    // Try extracting via the amazing ZlibDecompress class, because it probably misses the gzip header, footer and crc parts.
 		            if ($uncompressed == false) {
-        		        include 'ZlibDecompress/ZlibDecompress.php';
-                		$zlib = new ZlibDecompress();
+                		$zlib = new \ZlibDecompress();
 		                $uncompressed = $zlib->inflate($orgData); // we assume it works, this might need some work 
         		    }
 		            
@@ -75,6 +76,12 @@ class Peperzaken_Ios_DecodeImage {
 		            $newData = '';
 		            for ($y=0; $y < $height; $y++) {
         		        $i = strlen($newData); // setting the offset
+
+        		        //skip for multi IDAT chunks
+        		        if($i >= strlen($uncompressed)){
+        		        	break;
+        		        }
+
                 		$newData .= $uncompressed[$i]; // inject the first pixel, don't know why...
 		                for ($x=0; $x < $width; $x++) {
         		            $i = strlen($newData); // setting the offset
@@ -85,10 +92,15 @@ class Peperzaken_Ios_DecodeImage {
 		                    $newData .= $uncompressed[$i+3]; // Place the Aplha byte
         		        }
             		}
-		            // Compress the data again after swapping (this time with headers and crc and so on)
+		            
+		            /*
         		    $data = gzcompress($newData, 8);
 		            $chunk['length'] = strlen($data);
         		    $chunk['crc'] = crc32($chunk['type'] . $data);
+        		    */
+
+        		    //compress data after marge
+        		    $data = $newData;
 		        }
         		$chunk['data'] = $data;
         
@@ -96,6 +108,39 @@ class Peperzaken_Ios_DecodeImage {
         		$chunks[] = $chunk;
 		    }
 		}
+
+		//merge IDAT chunk
+		$idat_chunks = [];
+		foreach($chunks as $chunk){
+			if($chunk["type"] == "IDAT"){
+				$idat_chunks[] = $chunk;
+			}
+		}
+		$merged_idat_chunk = [
+			"type" => "IDAT",
+			"data" => ""
+		];
+		foreach($idat_chunks as $idat){
+			$merged_idat_chunk["data"] .= $idat["data"];
+		}
+		$merged_idat_chunk["data"] = gzcompress($merged_idat_chunk["data"], 8);
+		$merged_idat_chunk["length"] = strlen($merged_idat_chunk["data"]);
+		$merged_idat_chunk["crc"] = crc32($merged_idat_chunk['type'] . $merged_idat_chunk["data"]);
+
+		//replace IDAT chunks to merged chunk
+		$tmp = [];
+		foreach($chunks as $chunk){
+			if($chunk["type"] == "IDAT"){
+				if($merged_idat_chunk){
+					$tmp[] = $merged_idat_chunk;
+				}
+				continue;
+			}
+
+			$tmp[] = $chunk;
+		}
+		$chunks = $tmp;
+
 
 		$out = $headerData;
 		foreach ($chunks as $chunk) {
