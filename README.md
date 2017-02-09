@@ -1,10 +1,18 @@
-PHP script that reverses the iPhone PNG optimalisation by Peperzaken
+PHP script CgBI形式のPNGを元のPNGに戻すスクリプト
 
-### INTRODUCTION ###
+# 修正内容
 
-You can use this script to reverse the optimalisation process that Apple uses. It seems to be compatible with all the optimalisations that Apple does. For more info check out our blog post.
+CgBI形式（ipaから取り出した画像ファイルなど）が上手くPHPで読み書き出来ないため元のPNGに再変換するコード。
 
-### IMPLEMENTING THE SCRIPT ###
+オリジナルのコードだと上手く復元出来なかったので、修正版を書きました。
+
+# オリジナル
+
+[peperzaken/iPhone-optimized-PNG-reverse-script](https://github.com/peperzaken/iPhone-optimized-PNG-reverse-script)
+
+
+
+### 使い方
 
 	<?php
 	// Include the class
